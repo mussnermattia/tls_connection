@@ -1,0 +1,10 @@
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
+
+
+Country Name (2 letter code) [AU]:IT
+State or Province Name (full name) [Some-State]:BZ   
+Locality Name (eg, city) []:Bozen
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:sitzmann.com
+Organizational Unit Name (eg, section) []:gooner
+Common Name (e.g. server FQDN or YOUR name) []:Mattia  
+Email Address []:j@anik.com
