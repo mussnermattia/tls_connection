@@ -3,9 +3,49 @@ import ssl
 import threading
 import json
 import RPi.GPIO as GPIO
+import smbus
+import time
 
 # Set up GPIO mode
 GPIO.setmode(GPIO.BCM)
+
+# Set up I2C bus (I2C bus 1 for Raspberry Pi)
+bus = smbus.SMBus(1)
+
+# I2C Addresses
+MAGNETOMETER_ADDR = 0x1c
+GYRO_ACCEL_ADDR = 0x6a
+
+# Sensor Register Addresses
+CTRL_REG1_G = 0x10
+CTRL_REG6_XL = 0x20
+
+# Configure Gyro and Accelerometer (write 0xa0 to control registers)
+def configure_sensors():
+    try:
+        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG1_G, 0xa0)  # Gyro configuration
+        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG6_XL, 0xa0)  # Accelerometer configuration
+        print("Sensors configured.")
+    except Exception as e:
+        print(f"Error configuring sensors: {e}")
+
+def read_acceleration(axis):
+    """Read the acceleration in the specified axis."""
+    try:
+        if axis == "x_acc":
+            x_acc = bus.read_word_data(GYRO_ACCEL_ADDR, 0x28)  # Read x-axis acceleration
+            return x_acc
+        elif axis == "y_acc":
+            y_acc = bus.read_word_data(GYRO_ACCEL_ADDR, 0x2a)  # Read y-axis acceleration
+            return y_acc
+        elif axis == "z_acc":
+            z_acc = bus.read_word_data(GYRO_ACCEL_ADDR, 0x2c)  # Read z-axis acceleration
+            return z_acc
+        else:
+            raise ValueError(f"Invalid acceleration axis: {axis}")
+    except Exception as e:
+        print(f"Error reading acceleration for {axis}: {e}")
+        return None
 
 def handle_client(sslsock, client_address):
     """Handles communication with a single client."""
@@ -23,45 +63,27 @@ def handle_client(sslsock, client_address):
 
                     mode = json_data["mode"]
                     if mode == "read":
-                        if "gpio" in json_data["data"]:
-                            gpio_pin = json_data["data"]["gpio"]
-                            # Respond with the current state of the GPIO pin (for simplicity we assume it's a digital read)
-                            if GPIO.input(gpio_pin) is not None:
-                                response = json.dumps({
-                                    "mode": "read",
-                                    "data": {"gpio": gpio_pin, "value": GPIO.input(gpio_pin)}
-                                })
-                            else:
-                                raise ValueError("Invalid GPIO pin")
-                        else:
-                            raise ValueError("Missing 'gpio' field in 'read' mode")
-
-                    elif mode == "write":
-                        if "gpio" in json_data["data"] and "value" in json_data["data"]:
-                            gpio_pin = json_data["data"]["gpio"]
+                        if "value" in json_data["data"]:
                             value = json_data["data"]["value"]
-                            
-                            # Check if the GPIO pin is valid
-                            if gpio_pin < 0 or gpio_pin > 27:  # Assuming BCM pins 0-27
-                                raise ValueError("Invalid GPIO pin number")
 
-                            # Check if the value is valid (only 0 or 1 is allowed)
-                            if value not in [0, 1]:
-                                raise ValueError("Invalid value for GPIO. Only 0 or 1 is allowed")
+                            # Handle reading acceleration or angles
+                            if value in ["x_acc", "y_acc", "z_acc"]:
+                                # Read the acceleration value for the requested axis
+                                acceleration = read_acceleration(value)
 
-                            # Set the GPIO pin mode
-                            GPIO.setup(gpio_pin, GPIO.OUT)
-                            GPIO.output(gpio_pin, value)
-
-                            response = json.dumps({
-                                "mode": "write",
-                                "data": {"gpio": gpio_pin, "value": value}
-                            })
+                                if acceleration is not None:
+                                    response = json.dumps({
+                                        "mode": "read",
+                                        "data": {value: acceleration}
+                                    })
+                                else:
+                                    response = json.dumps({"error": "Failed to read acceleration data"})
+                            else:
+                                response = json.dumps({"error": "Invalid value for read. Expected 'x_acc', 'y_acc', or 'z_acc'"})
                         else:
-                            raise ValueError("Missing required fields for 'write' mode")
-
+                            response = json.dumps({"error": "Missing 'value' field in read mode"})
                     else:
-                        raise ValueError("Invalid mode")
+                        response = json.dumps({"error": "Invalid mode"})
 
                 except (json.JSONDecodeError, ValueError) as e:
                     # Handle invalid JSON or missing fields
@@ -112,9 +134,12 @@ def tls_server(server_address, server_port, certfile, keyfile):
             sock.close()
 
 if __name__ == "__main__":
-    server_address = "192.168.165.168"  # Modify this with the Raspberry Pi's IP address
+    server_address = "172.20.10.4"  # Modify this with the Raspberry Pi's IP address
     server_port = 12345
     certfile = "cert.pem"  # Replace with your actual certificate file
     keyfile = "key.pem"    # Replace with your actual key file
+
+    # Configure the sensors
+    configure_sensors()
 
     tls_server(server_address, server_port, certfile, keyfile)
