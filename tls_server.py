@@ -25,12 +25,23 @@ OUT_X_G = 0x22  # Register address for x-axis gyro
 OUT_Y_G = 0x24  # Register address for y-axis gyro
 OUT_Z_G = 0x26  # Register address for z-axis gyro
 
-# Configure Gyro and Accelerometer (write 0xa0 to control registers)
+
+CTRL_REG1_G = 0x10  # Gyroscope control register
+CTRL_REG6_XL = 0x20  # Accelerometer control register
+
+# Set values that configure the sensor for continuous measurement.
+# Here, the values are placeholders. You'll need to check your sensor's datasheet for exact values.
+
+GYRO_CONTINUOUS_MODE = 0xC0  # Example value for continuous measurement mode for gyroscope
+ACCEL_CONTINUOUS_MODE = 0xA0  # Example value for continuous measurement mode for accelerometer
+
 def configure_sensors():
     try:
-        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG1_G, 0xa0)  # Gyro configuration
-        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG6_XL, 0xa0)  # Accelerometer configuration
-        print("Sensors configured.")
+        # Configure Gyroscope for continuous measurements
+        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG1_G, GYRO_CONTINUOUS_MODE)  # Gyro configuration
+        # Configure Accelerometer for continuous measurements
+        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG6_XL, ACCEL_CONTINUOUS_MODE)  # Accelerometer configuration
+        print("Sensors configured for continuous measurements.")
     except Exception as e:
         print(f"Error configuring sensors: {e}")
 
