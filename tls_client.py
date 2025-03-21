@@ -21,10 +21,10 @@ def tls_client(server_address, server_port):
             mode = input("Enter read or write (or 'quit' to exit): ")
 
             if mode.lower() in ['read', 'r']:
-                value = input("Enter the sensor value to read (e.g., x_acc, y_acc, z_acc): ")
+                value = input("Enter the sensor value to read (e.g., x_acc, y_acc, z_acc, x_angle, y_angle, z_angle): ")
 
-                if value not in ['x_acc', 'y_acc', 'z_acc']:
-                    print("Invalid value. Please enter one of 'x_acc', 'y_acc', or 'z_acc'.")
+                if value not in ['x_acc', 'y_acc', 'z_acc', 'x_angle', 'y_angle', 'z_angle']:
+                    print("Invalid value. Please enter one of 'x_acc', 'y_acc', 'z_acc', 'x_angle', 'y_angle', 'z_angle'.")
                     continue
 
                 payload = {
@@ -42,7 +42,16 @@ def tls_client(server_address, server_port):
                         print("Server closed the connection.")
                         break
                     
-                    print(f"Server response: {response.decode()}")
+                    # Parse and display server response
+                    response_data = json.loads(response.decode())
+                    if "error" in response_data:
+                        print(f"Error from server: {response_data['error']}")
+                    else:
+                        value = response_data['data'].get(value, None)
+                        if value:
+                            print(f"Server response: {value['value']} {value['unit']}")
+                        else:
+                            print("No data received for the requested value.")
                 except (ssl.SSLError, socket.error) as e:
                     print(f"Connection error: {e}")
                     break

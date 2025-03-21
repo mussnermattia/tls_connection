@@ -53,16 +53,27 @@ def read_acceleration(axis):
         return None
 
 def read_gyro(axis):
-    """Read the angle (gyro data) in the specified axis."""
+    """Read the angle (gyro data) in the specified axis, convert to degrees."""
     try:
         if axis == "x_angle":
-            x_angle = bus.read_word_data(GYRO_ACCEL_ADDR, OUT_X_G)  # Read x-axis gyro angle
+            raw_data = bus.read_word_data(GYRO_ACCEL_ADDR, OUT_X_G)  # Read x-axis gyro
+            # Convert from 2's complement and scale
+            if raw_data > 32767:
+                raw_data -= 65536  # 2's complement correction
+            # Scale according to the sensor's scale factor (e.g., 131 for ±250°/s)
+            x_angle = raw_data / 131.0  # Adjust scaling based on your sensor configuration
             return x_angle
         elif axis == "y_angle":
-            y_angle = bus.read_word_data(GYRO_ACCEL_ADDR, OUT_Y_G)  # Read y-axis gyro angle
+            raw_data = bus.read_word_data(GYRO_ACCEL_ADDR, OUT_Y_G)  # Read y-axis gyro
+            if raw_data > 32767:
+                raw_data -= 65536  # 2's complement correction
+            y_angle = raw_data / 131.0  # Adjust scaling based on your sensor configuration
             return y_angle
         elif axis == "z_angle":
-            z_angle = bus.read_word_data(GYRO_ACCEL_ADDR, OUT_Z_G)  # Read z-axis gyro angle
+            raw_data = bus.read_word_data(GYRO_ACCEL_ADDR, OUT_Z_G)  # Read z-axis gyro
+            if raw_data > 32767:
+                raw_data -= 65536  # 2's complement correction
+            z_angle = raw_data / 131.0  # Adjust scaling based on your sensor configuration
             return z_angle
         else:
             raise ValueError(f"Invalid angle axis: {axis}")
