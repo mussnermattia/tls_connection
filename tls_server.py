@@ -16,9 +16,14 @@ bus = smbus.SMBus(1)
 MAGNETOMETER_ADDR = 0x1c
 GYRO_ACCEL_ADDR = 0x6a
 
-# Sensor Register Addresses
+# Sensor Register Addresses for acceleration (assuming these are correct)
 CTRL_REG1_G = 0x10
 CTRL_REG6_XL = 0x20
+
+# Sensor Register Addresses for angles (assuming these are correct)
+OUT_X_G = 0x22  # Register address for x-axis gyro
+OUT_Y_G = 0x24  # Register address for y-axis gyro
+OUT_Z_G = 0x26  # Register address for z-axis gyro
 
 # Configure Gyro and Accelerometer (write 0xa0 to control registers)
 def configure_sensors():
@@ -45,6 +50,24 @@ def read_acceleration(axis):
             raise ValueError(f"Invalid acceleration axis: {axis}")
     except Exception as e:
         print(f"Error reading acceleration for {axis}: {e}")
+        return None
+
+def read_gyro(axis):
+    """Read the angle (gyro data) in the specified axis."""
+    try:
+        if axis == "x_angle":
+            x_angle = bus.read_word_data(GYRO_ACCEL_ADDR, OUT_X_G)  # Read x-axis gyro angle
+            return x_angle
+        elif axis == "y_angle":
+            y_angle = bus.read_word_data(GYRO_ACCEL_ADDR, OUT_Y_G)  # Read y-axis gyro angle
+            return y_angle
+        elif axis == "z_angle":
+            z_angle = bus.read_word_data(GYRO_ACCEL_ADDR, OUT_Z_G)  # Read z-axis gyro angle
+            return z_angle
+        else:
+            raise ValueError(f"Invalid angle axis: {axis}")
+    except Exception as e:
+        print(f"Error reading angle for {axis}: {e}")
         return None
 
 def write_gpio(pin, value):
@@ -84,12 +107,27 @@ def handle_client(sslsock, client_address):
                                 if acceleration is not None:
                                     response = json.dumps({
                                         "mode": "read",
-                                        "data": {value: acceleration}
+                                        "data": {
+                                            value: {"value": acceleration, "unit": "m/s^2"}
+                                        }
                                     })
                                 else:
                                     response = json.dumps({"error": "Failed to read acceleration data"})
+                            elif value in ["x_angle", "y_angle", "z_angle"]:
+                                # Read the angle (gyro) value for the requested axis
+                                angle = read_gyro(value)
+
+                                if angle is not None:
+                                    response = json.dumps({
+                                        "mode": "read",
+                                        "data": {
+                                            value: {"value": angle, "unit": "degrees"}
+                                        }
+                                    })
+                                else:
+                                    response = json.dumps({"error": "Failed to read angle data"})
                             else:
-                                response = json.dumps({"error": "Invalid value for read. Expected 'x_acc', 'y_acc', or 'z_acc'"})
+                                response = json.dumps({"error": "Invalid value for read. Expected 'x_acc', 'y_acc', 'z_acc', 'x_angle', 'y_angle', or 'z_angle'"})
                         else:
                             response = json.dumps({"error": "Missing 'value' field in read mode"})
 
