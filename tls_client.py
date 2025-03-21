@@ -26,7 +26,7 @@ def tls_client(server_address, server_port):
                 payload = {
                     "mode": "read",
                     "data": {
-                        "pin": pin
+                        "gpio": int(pin)
                     }
                 }
 
@@ -50,8 +50,8 @@ def tls_client(server_address, server_port):
                 payload = {
                     "mode": "write",
                     "data": {
-                        "pin": pin,
-                        "value": value
+                        "gpio": int(pin),
+                        "value": int(value)
                     }
                 }
 
