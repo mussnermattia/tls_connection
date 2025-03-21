@@ -17,16 +17,20 @@ def tls_client(server_address, server_port):
         print(f"Connected to {server_address}:{server_port}")
 
         while True:
-            # enter info
-            mode = input("enter read or write: ")
+            # Enter info
+            mode = input("Enter read or write (or 'quit' to exit): ")
 
             if mode.lower() in ['read', 'r']:
-                pin = input("Enter pin: ")
+                value = input("Enter the sensor value to read (e.g., x_acc, y_acc, z_acc): ")
+
+                if value not in ['x_acc', 'y_acc', 'z_acc']:
+                    print("Invalid value. Please enter one of 'x_acc', 'y_acc', or 'z_acc'.")
+                    continue
 
                 payload = {
                     "mode": "read",
                     "data": {
-                        "gpio": int(pin)
+                        "value": value
                     }
                 }
 
@@ -68,30 +72,12 @@ def tls_client(server_address, server_port):
                     print(f"Connection error: {e}")
                     break
 
-
             elif mode.lower() == 'quit':
                 break
 
-
             else:
-                print('invalid input try again')
+                print('Invalid input, try again.')
                 continue
-
-
-            """
-            try:
-                sslsock.sendall(message.encode())
-                response = sslsock.recv(4096)
-
-                if not response:
-                    print("Server closed the connection.")
-                    break
-                
-                print(f"Server response: {response.decode()}")
-            except (ssl.SSLError, socket.error) as e:
-                print(f"Connection error: {e}")
-                break
-            """
 
         sslsock.close()
         print("Connection closed.")
@@ -105,7 +91,7 @@ def tls_client(server_address, server_port):
 
 
 if __name__ == "__main__":
-    server_address = "192.168.165.168"
-    server_port = 12345
+    server_address = "192.168.165.168"  # Replace with your server IP
+    server_port = 12345  # Replace with your server port
 
     tls_client(server_address, server_port)

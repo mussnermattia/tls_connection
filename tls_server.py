@@ -47,6 +47,16 @@ def read_acceleration(axis):
         print(f"Error reading acceleration for {axis}: {e}")
         return None
 
+def write_gpio(pin, value):
+    """Write a value to a specified GPIO pin."""
+    try:
+        GPIO.setup(pin, GPIO.OUT)
+        GPIO.output(pin, value)
+        print(f"GPIO {pin} set to {value}")
+    except Exception as e:
+        print(f"Error writing to GPIO {pin}: {e}")
+        return None
+
 def handle_client(sslsock, client_address):
     """Handles communication with a single client."""
     try:
@@ -82,6 +92,23 @@ def handle_client(sslsock, client_address):
                                 response = json.dumps({"error": "Invalid value for read. Expected 'x_acc', 'y_acc', or 'z_acc'"})
                         else:
                             response = json.dumps({"error": "Missing 'value' field in read mode"})
+
+                    elif mode == "write":
+                        if "gpio" in json_data["data"] and "value" in json_data["data"]:
+                            gpio_pin = json_data["data"]["gpio"]
+                            value = json_data["data"]["value"]
+
+                            # Write to the GPIO pin
+                            if write_gpio(gpio_pin, value) is None:
+                                response = json.dumps({"error": f"Failed to write to GPIO {gpio_pin}"})
+                            else:
+                                response = json.dumps({
+                                    "mode": "write",
+                                    "data": {"gpio": gpio_pin, "value": value}
+                                })
+                        else:
+                            response = json.dumps({"error": "Missing required fields for 'write' mode"})
+
                     else:
                         response = json.dumps({"error": "Invalid mode"})
 
