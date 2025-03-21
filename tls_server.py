@@ -162,7 +162,7 @@ def tls_server(server_address, server_port, certfile, keyfile):
 
 if __name__ == "__main__":
     server_address = "192.168.165.168"  # Modify this with the Raspberry Pi's IP address
-    server_port = 12345
+    server_port = 12346
     certfile = "cert.pem"  # Replace with your actual certificate file
     keyfile = "key.pem"    # Replace with your actual key file
 

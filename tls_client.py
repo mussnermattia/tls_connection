@@ -92,6 +92,6 @@ def tls_client(server_address, server_port):
 
 if __name__ == "__main__":
     server_address = "192.168.165.168"  # Replace with your server IP
-    server_port = 12345  # Replace with your server port
+    server_port = 12346  # Replace with your server port
 
     tls_client(server_address, server_port)
