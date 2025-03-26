@@ -25,23 +25,12 @@ OUT_X_G = 0x22  # Register address for x-axis gyro
 OUT_Y_G = 0x24  # Register address for y-axis gyro
 OUT_Z_G = 0x26  # Register address for z-axis gyro
 
-
-CTRL_REG1_G = 0x10  # Gyroscope control register
-CTRL_REG6_XL = 0x20  # Accelerometer control register
-
-# Set values that configure the sensor for continuous measurement.
-# Here, the values are placeholders. You'll need to check your sensor's datasheet for exact values.
-
-GYRO_CONTINUOUS_MODE = 0xC0  # Example value for continuous measurement mode for gyroscope
-ACCEL_CONTINUOUS_MODE = 0xA0  # Example value for continuous measurement mode for accelerometer
-
+# Configure Gyroscope and Accelerometer (write 0xa0 to control registers)
 def configure_sensors():
     try:
-        # Configure Gyroscope for continuous measurements
-        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG1_G, GYRO_CONTINUOUS_MODE)  # Gyro configuration
-        # Configure Accelerometer for continuous measurements
-        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG6_XL, ACCEL_CONTINUOUS_MODE)  # Accelerometer configuration
-        print("Sensors configured for continuous measurements.")
+        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG1_G, 0xa0)  # Gyro configuration
+        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG6_XL, 0xa0)  # Accelerometer configuration
+        print("Sensors configured.")
     except Exception as e:
         print(f"Error configuring sensors: {e}")
 
@@ -52,10 +41,10 @@ def read_acceleration(axis):
             x_acc = bus.read_word_data(GYRO_ACCEL_ADDR, 0x28)  # Read x-axis acceleration
             return x_acc
         elif axis == "y_acc":
-            y_acc = bus.read_word_data(GYRO_ACCEL_ADDR, 0x2a)  # Read y-axis acceleration
+            y_acc = bus.read_word_data(GYRO_ACCEL_ADDR, 0x2A)  # Read y-axis acceleration
             return y_acc
         elif axis == "z_acc":
-            z_acc = bus.read_word_data(GYRO_ACCEL_ADDR, 0x2c)  # Read z-axis acceleration
+            z_acc = bus.read_word_data(GYRO_ACCEL_ADDR, 0x2C)  # Read z-axis acceleration
             return z_acc
         else:
             raise ValueError(f"Invalid acceleration axis: {axis}")
@@ -64,27 +53,31 @@ def read_acceleration(axis):
         return None
 
 def read_gyro(axis):
-    """Read the angle (gyro data) in the specified axis, convert to degrees."""
+    """Read the gyro data (angular velocity) for the specified axis (combine low and high bytes)."""
     try:
         if axis == "x_angle":
-            raw_data = bus.read_word_data(GYRO_ACCEL_ADDR, OUT_X_G)  # Read x-axis gyro
-            # Convert from 2's complement and scale
+            low_byte = bus.read_byte_data(GYRO_ACCEL_ADDR, OUT_X_G)  # Read x-axis gyro low byte
+            high_byte = bus.read_byte_data(GYRO_ACCEL_ADDR, OUT_X_G + 1)  # Read x-axis gyro high byte
+            raw_data = (high_byte << 8) | low_byte  # Combine high and low byte into 16-bit data
             if raw_data > 32767:
-                raw_data -= 65536  # 2's complement correction
-            # Scale according to the sensor's scale factor (e.g., 131 for ±250°/s)
-            x_angle = raw_data / 131.0  # Adjust scaling based on your sensor configuration
+                raw_data -= 65536  # 2's complement correction for negative values
+            x_angle = raw_data / 131.0  # Scale based on ±250°/s for this sensor
             return x_angle
         elif axis == "y_angle":
-            raw_data = bus.read_word_data(GYRO_ACCEL_ADDR, OUT_Y_G)  # Read y-axis gyro
+            low_byte = bus.read_byte_data(GYRO_ACCEL_ADDR, OUT_Y_G)  # Read y-axis gyro low byte
+            high_byte = bus.read_byte_data(GYRO_ACCEL_ADDR, OUT_Y_G + 1)  # Read y-axis gyro high byte
+            raw_data = (high_byte << 8) | low_byte  # Combine high and low byte into 16-bit data
             if raw_data > 32767:
-                raw_data -= 65536  # 2's complement correction
-            y_angle = raw_data / 131.0  # Adjust scaling based on your sensor configuration
+                raw_data -= 65536  # 2's complement correction for negative values
+            y_angle = raw_data / 131.0  # Scale based on ±250°/s for this sensor
             return y_angle
         elif axis == "z_angle":
-            raw_data = bus.read_word_data(GYRO_ACCEL_ADDR, OUT_Z_G)  # Read z-axis gyro
+            low_byte = bus.read_byte_data(GYRO_ACCEL_ADDR, OUT_Z_G)  # Read z-axis gyro low byte
+            high_byte = bus.read_byte_data(GYRO_ACCEL_ADDR, OUT_Z_G + 1)  # Read z-axis gyro high byte
+            raw_data = (high_byte << 8) | low_byte  # Combine high and low byte into 16-bit data
             if raw_data > 32767:
-                raw_data -= 65536  # 2's complement correction
-            z_angle = raw_data / 131.0  # Adjust scaling based on your sensor configuration
+                raw_data -= 65536  # 2's complement correction for negative values
+            z_angle = raw_data / 131.0  # Scale based on ±250°/s for this sensor
             return z_angle
         else:
             raise ValueError(f"Invalid angle axis: {axis}")
@@ -129,9 +122,7 @@ def handle_client(sslsock, client_address):
                                 if acceleration is not None:
                                     response = json.dumps({
                                         "mode": "read",
-                                        "data": {
-                                            value: {"value": acceleration, "unit": "m/s^2"}
-                                        }
+                                        "data": {value: {"value": acceleration, "unit": "m/s^2"}}
                                     })
                                 else:
                                     response = json.dumps({"error": "Failed to read acceleration data"})
@@ -142,9 +133,7 @@ def handle_client(sslsock, client_address):
                                 if angle is not None:
                                     response = json.dumps({
                                         "mode": "read",
-                                        "data": {
-                                            value: {"value": angle, "unit": "degrees"}
-                                        }
+                                        "data": {value: {"value": angle, "unit": "degrees"}}
                                     })
                                 else:
                                     response = json.dumps({"error": "Failed to read angle data"})
