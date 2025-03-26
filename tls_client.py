@@ -2,105 +2,138 @@ import json
 import socket
 import ssl
 
-def tls_client(server_address, server_port):
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+class TLSClient:
+    def __init__(self, server_address, server_port, cert_file="cert.pem"):
+        self.server_address = server_address
+        self.server_port = server_port
+        self.cert_file = cert_file
+        self.sslsock = None
 
-        context = ssl.create_default_context()
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_REQUIRED
-        context.load_verify_locations("cert.pem")
+    def create_context(self):
+        """Creates and returns an SSL context."""
+        try:
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_REQUIRED
+            context.load_verify_locations(self.cert_file)
+            return context
+        except Exception as e:
+            print(f"Error creating SSL context: {e}")
+            return None
 
-        sslsock = context.wrap_socket(sock, server_hostname=server_address)
+    def connect(self):
+        """Creates a socket, wraps it in SSL, and connects to the server."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            context = self.create_context()
+            if context is None:
+                return False
 
-        sslsock.connect((server_address, server_port))
-        print(f"Connected to {server_address}:{server_port}")
+            self.sslsock = context.wrap_socket(sock, server_hostname=self.server_address)
+            self.sslsock.connect((self.server_address, self.server_port))
+            print(f"Connected to {self.server_address}:{self.server_port}")
+            return True
+        except ssl.SSLError as e:
+            print(f"SSL error: {e}")
+        except socket.error as e:
+            print(f"Socket error: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+        return False
+
+    def send_read_request(self, sensor_value):
+        """Sends a read request for a specified sensor value."""
+        valid_values = ['x_acc', 'y_acc', 'z_acc', 'x_angle', 'y_angle', 'z_angle']
+        if sensor_value not in valid_values:
+            print("Invalid sensor value. Please enter one of:", ", ".join(valid_values))
+            return True  # Continue execution
+
+        payload = {
+            "mode": "read",
+            "data": {"value": sensor_value}
+        }
+        try:
+            self.sslsock.sendall(json.dumps(payload).encode())
+            response = self.sslsock.recv(4096)
+            if not response:
+                print("Server closed the connection.")
+                return False
+            
+            response_data = json.loads(response.decode())
+            if "error" in response_data:
+                print(f"Error from server: {response_data['error']}")
+            else:
+                sensor_data = response_data['data'].get(sensor_value, None)
+                if sensor_data:
+                    print(f"Server response: {sensor_data['value']} {sensor_data['unit']}")
+                else:
+                    print("No data received for the requested value.")
+        except (ssl.SSLError, socket.error) as e:
+            print(f"Connection error: {e}")
+            return False
+        return True
+
+    def send_write_request(self, pin, value):
+        """Sends a write request with a pin and value."""
+        try:
+            payload = {
+                "mode": "write",
+                "data": {
+                    "gpio": int(pin),
+                    "value": int(value)
+                }
+            }
+        except ValueError:
+            print("Invalid input. Pin and value should be integers.")
+            return True  # Continue execution
+
+        try:
+            self.sslsock.sendall(json.dumps(payload).encode())
+            response = self.sslsock.recv(4096)
+            if not response:
+                print("Server closed the connection.")
+                return False
+            
+            print(f"Server response: {response.decode()}")
+        except (ssl.SSLError, socket.error) as e:
+            print(f"Connection error: {e}")
+            return False
+        return True
+
+    def run(self):
+        """Runs the interactive loop for read/write requests."""
+        if not self.connect():
+            return
 
         while True:
-            # Enter info
-            mode = input("Enter read or write (or 'quit' to exit): ")
-
-            if mode.lower() in ['read', 'r']:
-                value = input("Enter the sensor value to read (e.g., x_acc, y_acc, z_acc, x_angle, y_angle, z_angle): ")
-
-                if value not in ['x_acc', 'y_acc', 'z_acc', 'x_angle', 'y_angle', 'z_angle']:
-                    print("Invalid value. Please enter one of 'x_acc', 'y_acc', 'z_acc', 'x_angle', 'y_angle', 'z_angle'.")
-                    continue
-
-                payload = {
-                    "mode": "read",
-                    "data": {
-                        "value": value
-                    }
-                }
-
-                try:
-                    sslsock.sendall(json.dumps(payload).encode())
-                    response = sslsock.recv(4096)
-
-                    if not response:
-                        print("Server closed the connection.")
-                        break
-                    
-                    # Parse and display server response
-                    response_data = json.loads(response.decode())
-                    if "error" in response_data:
-                        print(f"Error from server: {response_data['error']}")
-                    else:
-                        value = response_data['data'].get(value, None)
-                        if value:
-                            print(f"Server response: {value['value']} {value['unit']}")
-                        else:
-                            print("No data received for the requested value.")
-                except (ssl.SSLError, socket.error) as e:
-                    print(f"Connection error: {e}")
+            mode = input("Enter read or write (or 'quit' to exit): ").lower()
+            if mode in ['read', 'r']:
+                sensor_value = input("Enter the sensor value to read (e.g., x_acc, y_acc, z_acc, x_angle, y_angle, z_angle): ")
+                if not self.send_read_request(sensor_value):
                     break
-
-            elif mode.lower() in ['write', 'w']:
+            elif mode in ['write', 'w']:
                 pin = input("Enter pin: ")
                 value = input("Enter value: ")
-
-                payload = {
-                    "mode": "write",
-                    "data": {
-                        "gpio": int(pin),
-                        "value": int(value)
-                    }
-                }
-
-                try:
-                    sslsock.sendall(json.dumps(payload).encode())
-                    response = sslsock.recv(4096)
-
-                    if not response:
-                        print("Server closed the connection.")
-                        break
-                    
-                    print(f"Server response: {response.decode()}")
-                except (ssl.SSLError, socket.error) as e:
-                    print(f"Connection error: {e}")
+                if not self.send_write_request(pin, value):
                     break
-
-            elif mode.lower() == 'quit':
+            elif mode == 'quit':
                 break
-
             else:
-                print('Invalid input, try again.')
+                print("Invalid input, try again.")
                 continue
 
-        sslsock.close()
-        print("Connection closed.")
+        self.close()
 
-    except ssl.SSLError as e:
-        print(f"SSL error: {e}")
-    except socket.error as e:
-        print(f"Socket error: {e}")
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+    def close(self):
+        """Closes the SSL connection."""
+        if self.sslsock:
+            self.sslsock.close()
+            print("Connection closed.")
 
 
 if __name__ == "__main__":
     server_address = "192.168.165.168"  # Replace with your server IP
     server_port = 12347  # Replace with your server port
 
-    tls_client(server_address, server_port)
+    client = TLSClient(server_address, server_port)
+    client.run()
