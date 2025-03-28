@@ -10,7 +10,7 @@ import time
 GPIO.setmode(GPIO.BCM)
 
 # Verwende I2C-Bus 2 (entsprechend den i2cset -y 2 Befehlen)
-bus = smbus.SMBus(2)
+bus = smbus.SMBus(1)
 
 # I2C Adressen
 MAGNETOMETER_ADDR = 0x1c
