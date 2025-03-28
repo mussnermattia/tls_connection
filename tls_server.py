@@ -28,9 +28,12 @@ OUT_Z_G = 0x26  # Register address for z-axis gyro
 # Configure Gyroscope and Accelerometer (write 0xa0 to control registers)
 def configure_sensors():
     try:
-        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG1_G, 0xa0)  # Gyro configuration
-        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG6_XL, 0xa0)  # Accelerometer configuration
-        print("Sensors configured.")
+        # For example, 0xC0 might set a high ODR for continuous gyro measurement
+        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG1_G, 0xC0)
+        # And 0x60 might set a continuous ODR for the accelerometer
+        bus.write_byte_data(GYRO_ACCEL_ADDR, CTRL_REG6_XL, 0x60)
+        time.sleep(0.05)  # Wait 50ms for the sensor to start updating
+        print("Sensors configured for continuous measurement.")
     except Exception as e:
         print(f"Error configuring sensors: {e}")
 
