@@ -1,6 +1,7 @@
 import json
 import socket
 import ssl
+import time  # Added to handle sleep delays
 
 class TLSClient:
     def __init__(self, server_address, server_port, cert_file="cert.pem"):
@@ -103,12 +104,12 @@ class TLSClient:
         return True
 
     def run(self):
-        """Runs the interactive loop for read/write requests."""
+        """Runs the interactive loop for read/write/continuous requests."""
         if not self.connect():
             return
 
         while True:
-            mode = input("Enter read or write (or 'quit' to exit): ").lower()
+            mode = input("Enter read, write, continuous mode, or 'quit' to exit: ").lower()
             if mode in ['read', 'r']:
                 sensor_value = input("Enter the sensor value to read (e.g., x_acc, y_acc, z_acc, x_angle, y_angle, z_angle): ")
                 if not self.send_read_request(sensor_value):
@@ -118,6 +119,15 @@ class TLSClient:
                 value = input("Enter value: ")
                 if not self.send_write_request(pin, value):
                     break
+            elif mode in ['continuous', 'c']:
+                sensor_value = input("Enter the sensor value for continuous reading (e.g., x_acc, y_acc, z_acc, x_angle, y_angle, z_angle): ")
+                print("Entering continuous mode. Press Ctrl+C to exit continuous mode.")
+                try:
+                    while True:
+                        self.send_read_request(sensor_value)
+                        time.sleep(0.5)  # Wait for 500 milliseconds before the next request
+                except KeyboardInterrupt:
+                    print("Exiting continuous mode.")
             elif mode == 'quit':
                 break
             else:
