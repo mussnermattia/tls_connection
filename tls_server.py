@@ -204,7 +204,7 @@ def tls_server(server_address, server_port, certfile, keyfile):
 
 if __name__ == "__main__":
     server_address = "192.168.10.168"  # Passe diese IP-Adresse ggf. an
-    server_port = 12346
+    server_port = 12347
     certfile = "cert.pem"  # Pfad zum Zertifikat
     keyfile = "key.pem"    # Pfad zum privaten Schlüssel
 

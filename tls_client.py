@@ -135,7 +135,7 @@ class TLSClient:
 
 if __name__ == "__main__":
     server_address = "192.168.10.168"  # Replace with your server IP
-    server_port = 12346  # Replace with your server port
+    server_port = 12347  # Replace with your server port
 
     client = TLSClient(server_address, server_port)
     client.run()
