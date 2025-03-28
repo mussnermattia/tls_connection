@@ -67,7 +67,7 @@ class TLSClient:
             
             sensor_data = response_data['data'].get(sensor_value, None)
             if sensor_data:
-                print(f"Received sensor data: {sensor_data}")
+                # print(f"Received sensor data: {sensor_data}")
                 return sensor_data  # Return the sensor data dictionary, e.g., {'value': ..., 'unit': ...}
             else:
                 print("No data received for the requested value.")
