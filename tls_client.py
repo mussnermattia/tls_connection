@@ -42,11 +42,11 @@ class TLSClient:
         return False
 
     def send_read_request(self, sensor_value):
-        """Sends a read request for a specified sensor value."""
+        """Sends a read request for a specified sensor value and returns the value from the server."""
         valid_values = ['x_acc', 'y_acc', 'z_acc', 'x_angle', 'y_angle', 'z_angle']
         if sensor_value not in valid_values:
             print("Invalid sensor value. Please enter one of:", ", ".join(valid_values))
-            return True  # Continue execution
+            return None
 
         payload = {
             "mode": "read",
@@ -57,21 +57,22 @@ class TLSClient:
             response = self.sslsock.recv(4096)
             if not response:
                 print("Server closed the connection.")
-                return False
+                return None
             
             response_data = json.loads(response.decode())
             if "error" in response_data:
                 print(f"Error from server: {response_data['error']}")
+                return None
+            
+            sensor_data = response_data['data'].get(sensor_value, None)
+            if sensor_data:
+                return sensor_data  # Return the sensor data dictionary, e.g., {'value': ..., 'unit': ...}
             else:
-                sensor_data = response_data['data'].get(sensor_value, None)
-                if sensor_data:
-                    print(f"Server response: {sensor_data['value']} {sensor_data['unit']}")
-                else:
-                    print("No data received for the requested value.")
+                print("No data received for the requested value.")
+                return None
         except (ssl.SSLError, socket.error) as e:
             print(f"Connection error: {e}")
-            return False
-        return True
+            return None
 
     def send_write_request(self, pin, value):
         """Sends a write request with a pin and value."""

@@ -2,6 +2,14 @@ import tkinter as tk
 from tkinter import ttk
 import json
 
+from tls_client import TLSClient
+
+
+server_address = "192.168.165.168"  # Replace with your server IP
+server_port = 12347  # Replace with your server port
+
+client = TLSClient(server_address, server_port)
+
 # Funktion zum Senden der Werte
 def send_values():
     # Erstellen eines Dictionarys mit den Werten
@@ -11,8 +19,9 @@ def send_values():
     }
     
     # Umwandeln in JSON und Ausgeben
-    json_data = json.dumps(data)
-    print(json_data)
+
+    client.send_write_request(data["gpio"], data["value"])
+
 
 # Funktion zum Setzen des Werts über den Toggle (0 oder 1)
 def toggle_value(event=None):
@@ -29,14 +38,8 @@ import random  # Simulating sensor data (use actual sensor reading in production
 
 # Function to simulate reading the sensor value
 def read_sensor_data(value_type):
-    # Simulate reading sensor data for acceleration or angle (this should be replaced with actual sensor reading logic)
-    if value_type.endswith("acc"):
-        # Simulating 3D accelerometer data
-        return random.uniform(-10, 10)  # Random acceleration value between -10 and 10 m/s^2
-    elif value_type.endswith("angle"):
-        # Simulating 3D angle data (e.g., degrees)
-        return random.uniform(-180, 180)  # Random angle value between -180 and 180 degrees
-    return 0  # Default if no valid type is provided
+
+    return client.send_read_request(value_type)
 
 # Function to create payload and fetch sensor data
 def display_value():
